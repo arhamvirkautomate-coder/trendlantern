@@ -1,0 +1,88 @@
+name: Refresh data and deploy
+
+on:
+  schedule:
+    - cron: "17 */4 * * *"   # every 4 hours (UTC). GitHub may start scheduled runs a few minutes late.
+  workflow_dispatch:          # "Run workflow" button in the Actions tab
+  push:
+    branches: [main]          # redeploy when you change the site or engine
+
+permissions:
+  contents: write   # save data to the `data` branch
+  pages: write      # publish to GitHub Pages
+  id-token: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Load the previous data (from the `data` branch)
+        run: |
+          mkdir -p state
+          if git ls-remote --exit-code --heads origin data >/dev/null; then
+            git fetch --depth 1 origin data
+            git archive FETCH_HEAD | tar -x -C state
+          fi
+          ls -la state || true
+
+      - name: Run the analysis engine
+        id: engine
+        continue-on-error: true
+        run: python3 engine/engine.py --out build --prev state/public
+
+      - name: Build the public data
+        run: |
+          mkdir -p site/data
+          [ -f state/public/ledger.json ] && cp state/public/ledger.json site/data/ || true
+          if [ "${{ steps.engine.outcome }}" = "success" ]; then
+            python3 engine/publicize.py build site/data
+          elif [ -f state/public/snapshot.json ]; then
+            echo "::warning::Engine failed; republishing the previous data"
+            cp state/public/*.json site/data/
+          else
+            echo "::error::Engine failed and there is no previous data"; exit 1
+          fi
+          [ -f state/public/brief.json ] && [ ! -f site/data/brief.json ] && cp state/public/brief.json site/data/ || true
+
+      - name: Write the AI brief (only if an API key is set)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BRIEF_MODEL: ${{ vars.BRIEF_MODEL }}
+          BRIEF_EVERY_HOURS: ${{ vars.BRIEF_EVERY_HOURS }}
+        run: |
+          [ -z "$BRIEF_MODEL" ] && unset BRIEF_MODEL
+          [ -z "$BRIEF_EVERY_HOURS" ] && unset BRIEF_EVERY_HOURS
+          python3 engine/brief.py site/data
+
+      - name: Save the data for the next run (force-pushes a single commit to `data`)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out/public
+          cp site/data/*.json out/public/
+          cd out
+          git init -q -b data
+          git add -A
+          git -c user.name="trendlantern-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
