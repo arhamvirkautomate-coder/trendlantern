@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TrendLantern</title>
+<meta name="description" content="Crypto research that grades itself in public. Every trend call is logged and scored 1, 3 and 7 days later. Plus trend scores for the top 40 coins, technical levels, news sentiment, Fear &amp; Greed and backtests, refreshed automatically every 4 hours. General information only.">
+<meta property="og:title" content="TrendLantern">
+<meta property="og:description" content="Crypto research that keeps its receipts: every trend call logged and graded in public. Updated every 4 hours.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#15202b">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light}
+[hidden]{display:none!important}
+
+/* Layout: a trading desk — sticky header with market stance, tabbed workspaces, detail sheet slides over for a coin. */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --panel-2:#f6f8fa; --line:#d9dfe6; --ink:#15202b; --ink-2:#4a5866; --ink-3:#7a8794;
+  --accent:#a86a06; --accent-soft:#f6e7c8; --accent-ink:#5a3900;
+  --up:#1c8a55; --up-soft:#dcf1e6; --down:#c23b3b; --down-soft:#f8e0e0; --warn:#b7791f; --warn-soft:#fbeed3;
+  --neutral-soft:#e6eaef; --chart:#2d5b8a; --chart-fill:rgba(45,91,138,.12);
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r:10px; --shadow:0 1px 2px rgba(21,32,43,.06), 0 4px 16px rgba(21,32,43,.05);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1419; --panel:#171e26; --panel-2:#1c242d; --line:#2a3440; --ink:#e7edf3; --ink-2:#a9b6c3; --ink-3:#77869a;
+  --accent:#e3a43a; --accent-soft:#3a2c12; --accent-ink:#f7d493;
+  --up:#3fbf7f; --up-soft:#15321f; --down:#ef6b6b; --down-soft:#3a1d1f; --warn:#e3a43a; --warn-soft:#3a2c12;
+  --neutral-soft:#232c36; --chart:#6fa3d8; --chart-fill:rgba(111,163,216,.14);
+  --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1419; --panel:#171e26; --panel-2:#1c242d; --line:#2a3440; --ink:#e7edf3; --ink-2:#a9b6c3; --ink-3:#77869a;
+  --accent:#e3a43a; --accent-soft:#3a2c12; --accent-ink:#f7d493;
+  --up:#3fbf7f; --up-soft:#15321f; --down:#ef6b6b; --down-soft:#3a1d1f; --warn:#e3a43a; --warn-soft:#3a2c12;
+  --neutral-soft:#232c36; --chart:#6fa3d8; --chart-fill:rgba(111,163,216,.14);
+  --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);margin:0}
+a{color:var(--chart)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h2{font-size:1.25rem;font-weight:700}
+h3{font-size:1rem;font-weight:700}
+.eyebrow{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.muted{color:var(--ink-2)} .faint{color:var(--ink-3)}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:16px}
+
+/* header */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
+.topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:10px}
+.brand{display:flex;align-items:baseline;gap:8px;margin-right:auto}
+.brand h1{font-size:1.35rem;letter-spacing:-.01em}
+.brand .pulse{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--up);box-shadow:0 0 0 0 var(--up);animation:pulse 2.4s infinite}
+.brand .pulse.stale{background:var(--warn);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,191,127,.5)}70%{box-shadow:0 0 0 8px rgba(63,191,127,0)}100%{box-shadow:0 0 0 0 rgba(63,191,127,0)}}
+@media (prefers-reduced-motion: reduce){.brand .pulse{animation:none}}
+.updated{font-size:.8rem;color:var(--ink-2)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 10px;font-size:.8rem;cursor:pointer;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs a{padding:9px 12px;text-decoration:none;color:var(--ink-2);font-weight:500;font-size:.9rem;border-bottom:2px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.banner{padding:9px 12px;border-radius:8px;font-size:.88rem;display:flex;gap:10px;align-items:flex-start}
+.banner.demo{background:var(--warn-soft);color:var(--ink)}
+.banner.err{background:var(--down-soft)}
+
+main{padding-block:18px 60px}
+section.view{display:grid;gap:18px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.card.flat{box-shadow:none}
+.card h3+*{margin-top:8px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:4px;min-width:0}
+.kpi .v{font-family:var(--f-mono);font-size:1.25rem;font-weight:500}
+.kpi .s{font-size:.8rem}
+.up{color:var(--up)} .down{color:var(--down)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+
+/* stance hero */
+.stance{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.stance .gauge{width:170px}
+.stance h2{font-size:1.6rem}
+@media (max-width:620px){.stance{grid-template-columns:1fr}.stance .gauge{width:150px}}
+
+/* pills */
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:var(--neutral-soft);color:var(--ink-2)}
+.pill.sb{background:var(--up);color:#fff}
+.pill.b{background:var(--up-soft);color:var(--up)}
+.pill.h{background:var(--neutral-soft);color:var(--ink-2)}
+.pill.r{background:var(--warn-soft);color:var(--warn)}
+.pill.s{background:var(--down-soft);color:var(--down)}
+.pill.risk-Low{background:var(--up-soft);color:var(--up)}
+.pill.risk-Medium{background:var(--neutral-soft);color:var(--ink-2)}
+.pill.risk-High{background:var(--warn-soft);color:var(--warn)}
+.pill.risk-Extreme{background:var(--down-soft);color:var(--down)}
+.pill.meme{background:var(--accent-soft);color:var(--accent-ink)}
+.score{font-family:var(--f-mono);font-weight:500}
+.bar{height:6px;border-radius:3px;background:var(--neutral-soft);overflow:hidden;width:60px}
+.bar>i{display:block;height:100%}
+
+/* pick cards */
+.pick{display:grid;gap:8px;padding:14px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);cursor:pointer;text-align:left;min-width:0}
+.pick:hover{border-color:var(--accent)}
+.pick .sym{font-family:var(--f-display);font-size:1.2rem;font-weight:700}
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:.8rem}
+.levels div{background:var(--panel-2);border-radius:6px;padding:5px 7px;min-width:0}
+.levels b{display:block;font-family:var(--f-mono);font-weight:500;font-size:.85rem;overflow-wrap:anywhere}
+
+/* tables */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600;background:var(--panel-2);position:sticky;top:0}
+th button{all:unset;cursor:pointer}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--panel-2)}
+td.num,th.num{text-align:right}
+.coincell{display:flex;align-items:center;gap:8px}
+.coincell b{font-family:var(--f-display)}
+
+/* filters */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input[type=text],input[type=number],input[type=search],select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.small{padding:4px 9px;font-size:.8rem}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 10px;font-size:.8rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+label.fld{display:grid;gap:4px;font-size:.8rem;color:var(--ink-2)}
+
+/* news */
+.news{display:grid;gap:0}
+.news article{display:grid;grid-template-columns:4px 1fr;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
+.news article .stripe{border-radius:2px;background:var(--neutral-soft)}
+.news article.pos .stripe{background:var(--up)}
+.news article.neg .stripe{background:var(--down)}
+.news a.t{color:var(--ink);text-decoration:none;font-weight:500}
+.news a.t:hover{text-decoration:underline}
+.news .meta{font-size:.78rem;color:var(--ink-3);display:flex;gap:8px;flex-wrap:wrap;margin-top:3px;align-items:center}
+
+/* brief */
+.brief p{margin:0 0 10px;max-width:72ch}
+.brief ul{margin:6px 0 0;padding-left:18px}
+.brief li{margin-bottom:5px}
+
+/* sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(10,15,20,.45);z-index:40}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--bg);z-index:41;overflow-y:auto;border-left:1px solid var(--line);padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 40px)}
+.sheet .head{display:flex;align-items:flex-start;gap:12px;justify-content:space-between;margin-bottom:12px}
+.sheet .price{font-family:var(--f-mono);font-size:1.6rem}
+.reasons{list-style:none;padding:0;margin:0;display:grid;gap:5px;font-size:.88rem}
+.reasons li{display:grid;grid-template-columns:18px 1fr;gap:6px}
+.reasons li .m{font-family:var(--f-mono);font-weight:600}
+.rules{margin:0;padding-left:18px;font-size:.9rem}
+.rules li{margin-bottom:5px}
+.inds{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.inds div{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.78rem;color:var(--ink-2)}
+.inds b{display:block;font-family:var(--f-mono);font-weight:500;color:var(--ink);font-size:.95rem}
+
+svg text{font-family:var(--f-mono);font-size:10px;fill:var(--ink-3)}
+.chartbox svg{width:100%;height:auto;display:block}
+
+/* chat */
+.chat{display:grid;gap:10px}
+.msg{padding:10px 12px;border-radius:10px;max-width:80ch;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.user{background:var(--accent-soft);justify-self:end}
+.msg.ai{background:var(--panel);border:1px solid var(--line)}
+.empty{padding:26px;text-align:center;color:var(--ink-2);border:1px dashed var(--line);border-radius:var(--r)}
+.alert-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--panel-2);font-size:.9rem}
+.alert-item.hot{background:var(--warn-soft)}
+.alert-item.bad{background:var(--down-soft)}
+.alert-item.good{background:var(--up-soft)}
+.disclaimer{font-size:.8rem;color:var(--ink-3);max-width:90ch}
+.src-list{font-size:.82rem;columns:2 240px}
+.hidden-sm{}
+@media (max-width:620px){.hidden-sm{display:none}}
+/* public site additions */
+.receipt-strip{display:grid;gap:4px;padding:14px 16px;border-radius:var(--r);background:var(--accent-soft);color:var(--ink);text-decoration:none;border:1px solid transparent}
+.receipt-strip:hover{border-color:var(--accent)}
+.receipt-strip .go{font-weight:600;color:var(--accent-ink);font-size:.88rem}
+.site-foot{padding-block:24px 40px;border-top:1px solid var(--line);font-size:.82rem;color:var(--ink-2)}
+.site-foot p{max-width:95ch;margin:0 0 10px}
+.notice-bg{position:fixed;inset:0;background:rgba(10,15,20,.55);z-index:60;display:grid;place-items:center;padding:16px}
+.notice{max-width:520px;width:100%}
+.notice p{margin:8px 0}
+.linkrow{all:unset;display:flex;justify-content:space-between;gap:10px;width:100%;padding:4px 0;cursor:pointer}
+.linkrow:focus-visible{outline:2px solid var(--accent)}
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap topbar">
+    <div class="brand"><span class="pulse" id="pulse"></span><h1>TrendLantern</h1><span class="updated" id="updated">Loading…</span></div>
+    <label class="row" style="gap:6px;font-size:.8rem;color:var(--ink-2)">Currency
+      <select id="curSel" aria-label="Currency"></select></label>
+  </div>
+  <div class="wrap">
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <a href="#overview">Overview</a><a href="#receipts">Report card</a><a href="#scanner">Market scanner</a><a href="#news">News</a><a href="#watchlist">My watchlist</a>
+      <a href="#backtest">Backtests</a><a href="#tools">Risk calculator</a><a href="#method">How it works</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="banners" class="grid" style="margin-bottom:14px"></div>
+
+  <!-- OVERVIEW -->
+  <section class="view" id="v-overview">
+    <div class="stance">
+      <div class="gauge" id="gauge"></div>
+      <div style="min-width:0">
+        <div class="eyebrow">Market conditions</div>
+        <h2 id="stanceTitle">Loading market data…</h2>
+        <p class="muted" id="stanceText" style="margin:6px 0 0;max-width:70ch">Prices, news and trend scores refresh automatically every 4 hours.</p>
+      </div>
+    </div>
+    <a class="receipt-strip" href="#receipts" id="receiptStrip">
+      <span class="eyebrow">Every call, graded in public</span>
+      <span id="receiptLine">Each time the model labels a coin Strong uptrend or Downtrend, it's logged with the time and price, then graded 1, 3 and 7 days later. Wrong calls stay on the record.</span>
+      <span class="go">See the report card →</span>
+    </a>
+    <div class="kpis" id="kpis"></div>
+    <div id="myAlerts" class="grid"></div>
+    <div class="grid g2">
+      <div class="card brief" id="brief">
+        <div class="spread"><h3>AI market brief</h3><span class="faint" id="briefTime"></span></div>
+        <div id="briefBody"><p class="muted">The written brief appears after the next update.</p></div>
+      </div>
+      <div class="card">
+        <div class="spread"><h3>What moved in 24h</h3><span class="faint" style="font-size:.8rem">tracked coins</span></div>
+        <div class="grid g2" style="margin-top:10px;gap:10px" id="movers"></div>
+        <div style="margin-top:14px"><div class="eyebrow">Fear &amp; Greed, last 60 days</div><div class="chartbox" id="fngChart"></div></div>
+        <div style="margin-top:14px" id="histWrap" hidden><div class="eyebrow">Market score, each update</div><div class="chartbox" id="histChart"></div></div>
+      </div>
+    </div>
+    <div class="spread"><h2>Strongest short-term trends</h2><span class="faint" style="font-size:.85rem">4-hour charts · days to weeks</span></div>
+    <div class="grid g3" id="leadShort"></div>
+    <div class="spread"><h2>Strongest long-term trends</h2><span class="faint" style="font-size:.85rem">daily charts · months</span></div>
+    <div class="grid g3" id="leadLong"></div>
+    <div class="grid g2">
+      <div class="card"><h3>Weakest trends</h3><div id="leadWeak" class="row" style="margin-top:10px"></div></div>
+      <div class="card"><h3>Meme coins <span class="pill risk-Extreme">Extreme risk</span></h3><p class="faint" style="font-size:.82rem;margin:6px 0 8px">These move on hype and can lose most of their value quickly.</p><div id="leadMeme" class="row"></div></div>
+    </div>
+  </section>
+
+  <!-- REPORT CARD -->
+  <section class="view" id="v-receipts" hidden>
+    <div class="spread"><h2>Report card</h2><span class="faint" id="ledNote" style="font-size:.85rem"></span></div>
+    <p class="muted" style="margin:0;max-width:80ch">Most crypto sites show their wins and forget their losses. Here, every time the model labels a coin <strong>Strong uptrend</strong> or <strong>Downtrend</strong>, the label is logged with its time and price. 1, 3 and 7 days later the price move is recorded next to it. A call counts as right if the price moved in the labelled direction after 7 days. Nothing is edited or removed.</p>
+    <div class="kpis" id="ledKpis"></div>
+    <h3>Open calls <span class="faint" style="font-weight:400;font-size:.85rem">· waiting for their 7-day grade</span></h3>
+    <div class="tbl-wrap"><table id="ledOpen"><thead><tr><th>Logged</th><th>Coin</th><th>Label</th><th class="num">Price then</th><th class="num">Now</th><th class="num">Move so far</th><th class="num">Graded on</th></tr></thead><tbody></tbody></table></div>
+    <h3>Graded calls</h3>
+    <div class="tbl-wrap"><table id="ledDone"><thead><tr><th>Logged</th><th>Coin</th><th>Label</th><th class="num">Price then</th><th class="num">1 day</th><th class="num">3 days</th><th class="num">7 days</th><th class="num">vs BTC</th><th>Result</th></tr></thead><tbody></tbody></table></div>
+    <p class="disclaimer">The report card measures a rules-based model's labels. It is a record of past behaviour, not a promise about future results and not a recommendation.</p>
+  </section>
+
+  <!-- SCANNER -->
+  <section class="view" id="v-scanner" hidden>
+    <div class="spread"><h2>Market scanner</h2><span class="faint" id="sigCount"></span></div>
+    <div class="filters">
+      <input type="search" id="q" placeholder="Search coin" aria-label="Search coin" style="width:150px">
+      <div class="seg" role="group" aria-label="Timeframe" id="horizonSeg">
+        <button type="button" data-h="short" aria-pressed="true">Short-term</button>
+        <button type="button" data-h="long" aria-pressed="false">Long-term</button>
+      </div>
+      <select id="fLabel" aria-label="Trend filter">
+        <option value="">All trends</option><option>Strong uptrend</option><option>Uptrend</option><option>Neutral</option><option>Weakening</option><option>Downtrend</option>
+      </select>
+      <select id="fRisk" aria-label="Risk filter"><option value="">Any risk</option><option>Low</option><option>Medium</option><option>High</option><option>Extreme</option></select>
+      <label class="row" style="font-size:.85rem"><input type="checkbox" id="fMeme" checked> Include meme coins</label>
+    </div>
+    <div class="tbl-wrap"><table id="sigTable"><thead></thead><tbody></tbody></table></div>
+    <p class="disclaimer">Trend scores describe what the charts are doing now. They are not recommendations and they are often wrong.</p>
+  </section>
+
+  <!-- NEWS -->
+  <section class="view" id="v-news" hidden>
+    <div class="spread"><h2>News that moves the charts</h2><span class="faint" id="newsCount"></span></div>
+    <div class="filters" id="newsFilters"></div>
+    <div class="card"><div class="news" id="newsList"></div></div>
+  </section>
+
+  <!-- WATCHLIST -->
+  <section class="view" id="v-watchlist" hidden>
+    <div class="spread"><h2>My watchlist</h2><span class="faint" style="font-size:.85rem">Saved only in this browser. Nothing is sent to us.</span></div>
+    <div class="kpis" id="wlKpis"></div>
+    <div class="card">
+      <h3>Add a coin</h3>
+      <form id="addWatch" class="filters" style="margin-top:10px">
+        <label class="fld">Coin<select id="wSym" required></select></label>
+        <label class="fld">Amount held (optional)<input type="number" id="wQty" step="any" min="0" style="width:140px"></label>
+        <label class="fld">Average cost, USD (optional)<input type="number" id="wCost" step="any" min="0" style="width:160px"></label>
+        <button class="btn primary" type="submit" style="align-self:end">Add</button>
+      </form>
+    </div>
+    <div class="tbl-wrap"><table id="wlTable"><thead><tr><th>Coin</th><th class="num">Price</th><th class="num">24h</th><th class="num">7d</th><th>Short-term</th><th>Long-term</th><th class="num">Value</th><th class="num">Gain / loss</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="card">
+      <h3>Price alerts</h3>
+      <form id="addAlert" class="filters" style="margin-top:10px">
+        <select id="aSym" aria-label="Alert coin"></select>
+        <select id="aDir" aria-label="Direction"><option value="above">rises above</option><option value="below">falls below</option></select>
+        <input type="number" id="aPrice" step="any" min="0" placeholder="Price in USD" aria-label="Alert price in USD" required style="width:130px">
+        <button class="btn" type="submit">Add alert</button>
+      </form>
+      <div id="alertList" class="grid" style="margin-top:12px;gap:8px"></div>
+      <p class="faint" style="font-size:.8rem;margin:10px 0 0">Alerts are checked against each 4-hourly update and shown at the top of the Overview when you visit.</p>
+    </div>
+  </section>
+
+  <!-- BACKTEST -->
+  <section class="view" id="v-backtest" hidden>
+    <div class="spread"><h2>Backtests: how the short-term model did in the past</h2><span class="faint" id="btNote" style="font-size:.85rem"></span></div>
+    <div class="kpis" id="btKpis"></div>
+    <p class="muted" id="btVerdict" style="margin:0;max-width:80ch"></p>
+    <div class="tbl-wrap"><table id="btTable"><thead><tr><th>Coin</th><th class="num">Trades</th><th class="num">Winners</th><th class="num">Avg / trade</th><th class="num">Profit factor</th><th class="num">Model account</th><th class="num">Buy &amp; hold</th></tr></thead><tbody></tbody></table></div>
+    <div class="card">
+      <h3>How the backtest works</h3>
+      <ul class="rules" style="margin-top:8px">
+        <li>It replays the short-term scoring model candle by candle over roughly the last four months of 4-hour prices. Each step only uses data available at that time.</li>
+        <li>A simulated trade starts when the score reaches "Strong uptrend" with confirmed momentum. It ends at the volatility stop (2×ATR), half at +1.5R and the rest at +3R, or after 10 days.</li>
+        <li>Fees of 0.1% each way are included. News is not included, because there is no reliable news history.</li>
+        <li>"Model account" assumes one-third of a model account per trade. "Buy &amp; hold" is the coin's own change over the same period.</li>
+        <li>Backtests describe the past. They do not predict the future and are not a recommendation to trade.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- TOOLS -->
+  <section class="view" id="v-tools" hidden>
+    <h2>Risk calculator</h2>
+    <div class="card">
+      <p class="muted" style="margin:0 0 10px;max-width:75ch">A general calculator for learning how position size, stop distance and risk relate. It uses only the numbers you type.</p>
+      <div class="filters">
+        <label class="fld">Account size (USD)<input type="number" id="cCap" value="300" step="any" style="width:120px"></label>
+        <label class="fld">Risk %<input type="number" id="cRisk" value="1.5" step="0.25" style="width:80px"></label>
+        <label class="fld">Entry price<input type="number" id="cEntry" value="100" step="any" style="width:110px"></label>
+        <label class="fld">Stop price<input type="number" id="cStop" value="95" step="any" style="width:110px"></label>
+        <label class="fld">Target price<input type="number" id="cTp" value="112" step="any" style="width:110px"></label>
+      </div>
+      <div id="cOut" class="kpis" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h3>Common risk-management principles</h3>
+      <ul class="rules" style="margin-top:8px">
+        <li>Many traders limit the loss on any single trade to 1–2% of their account.</li>
+        <li>Leverage magnifies losses as well as gains. Spot positions cannot be liquidated.</li>
+        <li>Meme and low-liquidity coins can move 20–50% in a day.</li>
+        <li>Exchange accounts can be hacked or frozen. Many people keep only active trading funds on exchanges.</li>
+        <li>Crypto gains are taxable in many countries. Keep records of every trade.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- METHOD -->
+  <section class="view" id="v-method" hidden>
+    <h2>How it works</h2>
+    <div class="grid g2">
+      <div class="card">
+        <h3>Every 4 hours, automatically</h3>
+        <ol class="rules" style="margin-top:8px">
+          <li>Collects prices and 4-hour and daily candles for the ~40 largest liquid coins on Binance, plus the largest meme coins.</li>
+          <li>Reads crypto, macro and regulation headlines and scores each one for sentiment and likely impact.</li>
+          <li>Adds market-wide data: Fear &amp; Greed, BTC dominance, stablecoin supply, DeFi TVL and market breadth.</li>
+          <li>Scores every coin twice. The short-term score uses the 4-hour trend, RSI, MACD, volume, Bollinger bands, news and the Bitcoin backdrop. The long-term score uses the 200-day trend, golden/death cross, strength against BTC, drawdown, size, volatility and sentiment.</li>
+          <li>Calculates technical reference levels: pullback zone, a volatility stop at 2×ATR, +1.5R and +3R levels, and long-term trend bands.</li>
+          <li>Replays the short-term model on past prices (Backtests tab) so you can see how it behaved.</li>
+          <li>An AI model reads the data and headlines and writes the market brief. It is instructed not to give recommendations.</li>
+          <li>Every Strong uptrend and Downtrend label is logged and graded 1, 3 and 7 days later on the Report card.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Trend scale</h3>
+        <div class="grid" style="gap:8px;margin-top:10px">
+          <div class="row"><span class="pill sb">Strong uptrend</span><span class="muted">72–100: trend and momentum aligned</span></div>
+          <div class="row"><span class="pill b">Uptrend</span><span class="muted">60–71: mostly positive</span></div>
+          <div class="row"><span class="pill h">Neutral</span><span class="muted">45–59: no clear direction</span></div>
+          <div class="row"><span class="pill r">Weakening</span><span class="muted">32–44: momentum fading</span></div>
+          <div class="row"><span class="pill s">Downtrend</span><span class="muted">0–31: trend pointing down</span></div>
+        </div>
+        <h3 style="margin-top:18px">Data sources, last update</h3>
+        <ul class="src-list" id="srcList"></ul>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Limits you should know</h3>
+      <ul class="rules" style="margin-top:8px">
+        <li>Scores come from fixed rules applied to public data. They can't foresee hacks, regulation, delistings or sudden news.</li>
+        <li>News sentiment is scored by keywords and can misread a headline.</li>
+        <li>Data can be late, missing or wrong. Always check prices on your exchange before acting.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap site-foot">
+  <p><strong>General information only.</strong> TrendLantern does not give financial, investment, legal or tax advice and does not consider your objectives, finances or needs. Nothing here is a recommendation to buy, sell or hold any asset. Crypto assets are highly volatile and you can lose all of your money. Consider getting independent professional advice.</p>
+  <p class="row" style="gap:14px"><a href="legal.html#disclaimer">Disclaimer</a><a href="legal.html#terms">Terms of use</a><a href="legal.html#privacy">Privacy</a><span id="contactLine"></span><span class="faint">© <span id="yr"></span> TrendLantern</span></p>
+</footer>
+
+<div id="sheetBg" class="sheet-bg" hidden></div>
+<aside id="sheet" class="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="sheetTitle"></aside>
+
+<div id="notice" class="notice-bg" hidden>
+  <div class="notice card" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
+    <h2 id="noticeTitle">Before you start</h2>
+    <p>TrendLantern is a free crypto research tool that grades its own calls in public. It shows market data, trend scores, news and historical backtests.</p>
+    <ul class="rules">
+      <li>It is general information, not financial advice, and does not know your situation.</li>
+      <li>Nothing on this site tells you to buy or sell anything.</li>
+      <li>Crypto prices can fall sharply and you can lose all the money you put in.</li>
+    </ul>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><a href="legal.html#disclaimer">Read the full disclaimer</a><button class="btn primary" type="button" id="noticeOk">I understand</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+// ------------------------------------------------------------ site settings (edit these)
+const SITE = { contactEmail: "" };  // e.g. "hello@yourdomain.com"; shown in the footer when set
+
+// ------------------------------------------------------------ state
+const S = { snap:null, charts:null, news:null, brief:null, hist:null, ledger:null, cur:"USD", horizon:"short",
+  sort:{k:"score",dir:-1}, newsCat:"All", chartMode:"h4", wl:{items:[], alerts:[]} };
+const CUR = {USD:{s:"$"},EUR:{s:"€"},GBP:{s:"£"},AUD:{s:"A$"},CAD:{s:"C$"},PKR:{s:"Rs "},INR:{s:"₹"},AED:{s:"AED "}};
+const $ = (s, r=document) => r.querySelector(s);
+function h(tag, attrs, ...kids){
+  const el = document.createElement(tag);
+  if (attrs) for (const [k,v] of Object.entries(attrs)){
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k instanceof Node ? k : String(k));
+  return el;
+}
+const safeUrl = u => /^https?:\/\//i.test(u||"") ? u : null;
+const store = { get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+                set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} } };
+S.cur = store.get("tl_cur", "USD"); S.wl = store.get("tl_watch", {items:[], alerts:[]});
+
+// ------------------------------------------------------------ formatting
+const rate = () => (S.snap?.fx?.[S.cur]) || 1;
+function fp(usd, cur=S.cur){
+  if (usd == null || !isFinite(usd)) return "—";
+  const v = usd * ((S.snap?.fx?.[cur]) || 1), a = Math.abs(v);
+  let s;
+  if (a >= 1000) s = v.toLocaleString("en-US",{maximumFractionDigits: a>=100000?0:2});
+  else if (a >= 1) s = v.toLocaleString("en-US",{maximumFractionDigits:4});
+  else if (a === 0) s = "0";
+  else s = Number(v.toPrecision(4)).toString();
+  return (CUR[cur]?.s||"") + s;
+}
+function fb(usd){
+  if (usd == null || !isFinite(usd)) return "—";
+  const v = usd * rate(), a = Math.abs(v);
+  const [d,u] = a>=1e12?[1e12,"T"]:a>=1e9?[1e9,"B"]:a>=1e6?[1e6,"M"]:a>=1e3?[1e3,"K"]:[1,""];
+  return CUR[S.cur].s + (v/d).toFixed(a>=1e3?2:0) + u;
+}
+function fm(usd){ // money amounts (sizes, P&L)
+  if (usd == null || !isFinite(usd)) return "—";
+  const v = usd * rate();
+  return (v<0?"−":"") + CUR[S.cur].s + Math.abs(v).toLocaleString("en-US",{maximumFractionDigits: Math.abs(v)>=1000?0:2, minimumFractionDigits: Math.abs(v)>=1000?0:2});
+}
+const fpct = (x, d=2) => x == null || !isFinite(x) ? "—" : (x>0?"+":x<0?"−":"") + Math.abs(x).toFixed(d) + "%";
+const cls = x => x > 0 ? "up" : x < 0 ? "down" : "";
+const lblCls = l => ({"Strong uptrend":"sb","Uptrend":"b","Neutral":"h","Weakening":"r","Downtrend":"s"})[l] || "h";
+const ago = ms => { if(!ms) return "—"; const m = Math.round((Date.now()-ms)/60000); return m<1?"just now":m<60?m+" min ago":m<1440?Math.round(m/60)+" h ago":Math.round(m/1440)+" d ago"; };
+const dt = ms => ms ? new Date(ms).toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
+const coin = sym => S.snap?.coins?.find(c => c.sym === sym);
+const pill = (label, extra) => h("span",{class:"pill "+lblCls(label)+(extra?" "+extra:"")}, label);
+const riskPill = r => h("span",{class:"pill risk-"+r}, r+" risk");
+
+// ------------------------------------------------------------ charts (SVG)
+const NS = "http://www.w3.org/2000/svg";
+function s(tag, attrs){ const el = document.createElementNS(NS, tag); for (const [k,v] of Object.entries(attrs||{})) el.setAttribute(k, v); return el; }
+function spark(vals, w=96, hgt=28){
+  const svg = s("svg",{viewBox:`0 0 ${w} ${hgt}`,width:w,height:hgt,"aria-hidden":"true"});
+  if (!vals || vals.length < 2) return svg;
+  const mn = Math.min(...vals), mx = Math.max(...vals), r = mx-mn || 1;
+  const pts = vals.map((v,i)=>[i/(vals.length-1)*(w-4)+2, hgt-3-(v-mn)/r*(hgt-6)]);
+  const col = vals[vals.length-1] >= vals[0] ? "var(--up)" : "var(--down)";
+  svg.append(s("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:col,"stroke-width":1.5,"stroke-linejoin":"round"}));
+  const e = pts[pts.length-1]; svg.append(s("circle",{cx:e[0],cy:e[1],r:2,fill:col}));
+  return svg;
+}
+function lineChart(vals, {w=640, hgt=220, overlays=[], fmt=v=>fp(v), t0=null, step=null, color="var(--chart)", fill="var(--chart-fill)", yMin=null, yMax=null}={}){
+  const svg = s("svg",{viewBox:`0 0 ${w} ${hgt}`,role:"img"});
+  if (!vals || vals.length < 2){ const t = s("text",{x:w/2,y:hgt/2,"text-anchor":"middle"}); t.textContent="No chart data yet"; svg.append(t); return svg; }
+  const L=8, R=78, T=10, B=22;
+  const ov = overlays.map(o=>o.v).filter(v=>v!=null && isFinite(v));
+  let mn = yMin ?? Math.min(...vals, ...ov), mx = yMax ?? Math.max(...vals, ...ov);
+  const pad = (mx-mn)*0.06 || mx*0.02 || 1; if (yMin==null) mn -= pad; if (yMax==null) mx += pad;
+  const X = i => L + i/(vals.length-1)*(w-L-R), Y = v => T + (1-(v-mn)/(mx-mn))*(hgt-T-B);
+  for (let g=0; g<=4; g++){
+    const v = mn + (mx-mn)*g/4, y = Y(v);
+    svg.append(s("line",{x1:L,x2:w-R,y1:y,y2:y,stroke:"var(--line)","stroke-width":1}));
+    const t = s("text",{x:w-R+6,y:y+3}); t.textContent = fmt(v); svg.append(t);
+  }
+  if (t0 && step){
+    [0, Math.floor((vals.length-1)/2), vals.length-1].forEach((i,k)=>{
+      const t = s("text",{x:X(i),y:hgt-6,"text-anchor":k===0?"start":k===2?"end":"middle"});
+      t.textContent = new Date(t0 + i*step).toLocaleDateString(undefined,{month:"short",day:"numeric"}); svg.append(t);
+    });
+  }
+  const pts = vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`);
+  svg.append(s("path",{d:`M${X(0)},${Y(mn)} L${pts.join(" L")} L${X(vals.length-1)},${Y(mn)} Z`,fill}));
+  svg.append(s("polyline",{points:pts.join(" "),fill:"none",stroke:color,"stroke-width":1.8,"stroke-linejoin":"round"}));
+  for (const o of overlays){
+    if (o.v == null || !isFinite(o.v) || o.v < mn || o.v > mx) continue;
+    const y = Y(o.v);
+    svg.append(s("line",{x1:L,x2:w-R,y1:y,y2:y,stroke:o.color,"stroke-width":1.2,"stroke-dasharray":"4 3"}));
+    const t = s("text",{x:L+4,y:y-4,style:`fill:${o.color}`}); t.textContent = o.label; svg.append(t);
+  }
+  const e = vals.length-1; svg.append(s("circle",{cx:X(e),cy:Y(vals[e]),r:3.5,fill:color}));
+  return svg;
+}
+function gauge(val, label){
+  const svg = s("svg",{viewBox:"0 0 200 120",role:"img","aria-label":`${label} ${val}`});
+  const arc = (a0,a1,col,wd=14)=>{ const p=a=>[100+80*Math.cos(Math.PI*(1-a)),100-80*Math.sin(Math.PI*(1-a))]; const [x0,y0]=p(a0),[x1,y1]=p(a1);
+    return s("path",{d:`M${x0},${y0} A80,80 0 0 1 ${x1},${y1}`,stroke:col,"stroke-width":wd,fill:"none"}); };
+  svg.append(arc(0,.32,"var(--down-soft)"), arc(.32,.45,"var(--warn-soft)"), arc(.45,.62,"var(--neutral-soft)"), arc(.62,1,"var(--up-soft)"));
+  if (val != null){
+    const v = Math.max(0, Math.min(100, val))/100;
+    const col = val>=62?"var(--up)":val>=45?"var(--ink-2)":val>=32?"var(--warn)":"var(--down)";
+    svg.append(arc(0, Math.max(v,.005), col, 6));
+    const a = Math.PI*(1-v); svg.append(s("circle",{cx:100+80*Math.cos(a),cy:100-80*Math.sin(a),r:6,fill:col}));
+    const t = s("text",{x:100,y:96,"text-anchor":"middle",style:"font-size:34px;fill:var(--ink);font-family:var(--f-display);font-weight:700"}); t.textContent = val; svg.append(t);
+  }
+  const t2 = s("text",{x:100,y:116,"text-anchor":"middle"}); t2.textContent = label; svg.append(t2);
+  return svg;
+}
+
+
+
+// ------------------------------------------------------------ routing
+const VIEWS = ["overview","receipts","scanner","news","watchlist","backtest","tools","method"];
+function route(){
+  const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "overview";
+  for (const id of VIEWS) $("#v-"+id).hidden = id !== v;
+  for (const a of document.querySelectorAll("#tabs a")) a.setAttribute("aria-current", a.getAttribute("href")==="#"+v ? "page" : "false");
+}
+addEventListener("hashchange", () => { route(); scrollTo(0,0); });
+
+// ------------------------------------------------------------ header
+function renderHeader(){
+  const m = S.snap?.meta;
+  $("#updated").textContent = m ? `Updated ${ago(m.generated_ms)}` : "Loading…";
+  $("#pulse").classList.toggle("stale", !m || Date.now() - m.generated_ms > 9*3600e3);
+  const sel = $("#curSel");
+  if (S.snap && sel.options.length !== Object.keys(S.snap.fx).length){
+    sel.replaceChildren(...Object.keys(S.snap.fx).filter(c => CUR[c]).map(c => h("option",{value:c},c)));
+  }
+  if (S.snap && !S.snap.fx[S.cur]) S.cur = "USD";
+  sel.value = S.cur;
+  const bn = $("#banners"); bn.replaceChildren();
+  if (m && Date.now() - m.generated_ms > 9*3600e3) bn.append(h("div",{class:"banner err"}, h("span",null,`The last update was ${ago(m.generated_ms)}. Prices below may be out of date.`)));
+}
+
+// ------------------------------------------------------------ overview
+function levelBoxes(c, hz){
+  if (hz === "short"){ const L = c.short.levels;
+    return h("div",{class:"levels"}, h("div",null,"Pullback zone", h("b",null, fp(L.pullback[0]))), h("div",null,"Volatility stop", h("b",{class:"down"}, fp(L.vstop))), h("div",null,"Resistance", h("b",null, fp(L.resistance)))); }
+  const L = c.long.levels;
+  return h("div",{class:"levels"}, h("div",null,"50/200-day band", h("b",null, fp(L.band[0]))), h("div",null,"Trend break", h("b",{class:"down"}, fp(L.trend_break))), h("div",null,"1-year high", h("b",null, fp(L.hi1y))));
+}
+function renderOverview(){
+  const sn = S.snap; if (!sn) return;
+  const mk = sn.market;
+  $("#gauge").replaceChildren(gauge(mk.score, "market score / 100"));
+  $("#stanceTitle").textContent = mk.stance;
+  $("#stanceText").textContent = mk.regime?.text || "";
+  const k = $("#kpis"); k.replaceChildren();
+  const kpi = (label, v, sub, sc) => h("div",{class:"kpi"}, h("span",{class:"eyebrow"},label), h("span",{class:"v"},v), h("span",{class:"s "+(sc||"muted")},sub));
+  const btc = coin("BTC"), eth = coin("ETH");
+  if (btc) k.append(kpi("Bitcoin", fp(btc.price), `${fpct(btc.ch24h)} 24h · ${fpct(btc.ch7d)} 7d`, cls(btc.ch24h)));
+  if (eth) k.append(kpi("Ethereum", fp(eth.price), `${fpct(eth.ch24h)} 24h · ${fpct(eth.ch7d)} 7d`, cls(eth.ch24h)));
+  k.append(kpi("Total market cap", fb(mk.total_mcap), fpct(mk.mcap_ch24)+" 24h", cls(mk.mcap_ch24)));
+  k.append(kpi("Fear & Greed", mk.fng?.v ?? "—", mk.fng?.l || ""));
+  k.append(kpi("BTC dominance", mk.btc_dom ? mk.btc_dom.toFixed(1)+"%" : "—", `ETH ${mk.eth_dom?.toFixed?.(1) ?? "—"}%`));
+  k.append(kpi("Market breadth", mk.breadth?.st != null ? mk.breadth.st+"%" : "—", `above 4h trend · ${mk.breadth?.lt ?? "—"}% above 200d`));
+  if (mk.stables) k.append(kpi("Stablecoin supply", fb(mk.stables.total), fpct(mk.stables.ch30,1)+" in 30 days", cls(mk.stables.ch30)));
+  if (mk.tvl) k.append(kpi("DeFi TVL", fb(mk.tvl.total), fpct(mk.tvl.ch30,1)+" in 30 days", cls(mk.tvl.ch30)));
+  const mv = $("#movers"); mv.replaceChildren();
+  const list = (title, arr) => h("div",null, h("div",{class:"eyebrow"},title), ...arr.map(x => h("button",{type:"button",class:"spread linkrow",onclick:()=>openCoin(x.sym)}, h("b",{style:"font-family:var(--f-display)"},x.sym), h("span",{class:"num "+cls(x.ch)}, fpct(x.ch)))));
+  mv.append(list("Top gainers", mk.gainers||[]), list("Top losers", mk.losers||[]));
+  $("#fngChart").replaceChildren(lineChart(mk.fng?.hist||[], {hgt:120, fmt:v=>Math.round(v), yMin:0, yMax:100, color:"var(--accent)", fill:"transparent",
+    overlays:[{v:25,label:"extreme fear",color:"var(--up)"},{v:75,label:"extreme greed",color:"var(--down)"}]}));
+  const card = (c, hz) => h("button",{class:"pick",type:"button",onclick:()=>openCoin(c.sym)},
+    h("div",{class:"spread"}, h("span",{class:"sym"},c.sym), h("span",{class:"row",style:"gap:6px"}, pill(c[hz].label), h("span",{class:"score"},c[hz].score))),
+    h("div",{class:"spread",style:"font-size:.85rem"}, h("span",{class:"num"},fp(c.price)), h("span",{class:"num "+cls(c.ch7d)},fpct(c.ch7d)+" 7d"), c.meme ? h("span",{class:"pill meme"},"meme") : riskPill(c.risk)),
+    levelBoxes(c, hz),
+    c.bt?.n ? h("div",{class:"faint",style:"font-size:.8rem"}, `Backtest: ${c.bt.n} trades, ${c.bt.win}% winners`) : null);
+  const fill = (id, syms, hz, empty) => { const el = $(id); el.replaceChildren(); const cs = syms.map(coin).filter(Boolean);
+    if (!cs.length) el.append(h("div",{class:"empty"}, empty)); else cs.forEach(c => el.append(card(c, hz))); };
+  fill("#leadShort", sn.leaders.short, "short", "No coin has a clear short-term uptrend right now.");
+  fill("#leadLong", sn.leaders.long, "long", "No coin has a clear long-term uptrend right now.");
+  const chips = (id, syms, emptyText) => { const el = $(id); el.replaceChildren(); if (!syms.length) el.append(h("span",{class:"faint"},emptyText));
+    syms.forEach(sy => { const c = coin(sy); el.append(h("button",{class:"chip",type:"button",onclick:()=>openCoin(sy)}, sy, c ? " "+fpct(c.ch7d,1) : "")); }); };
+  chips("#leadWeak", sn.leaders.weak, "No coin is in a clear downtrend on both timeframes.");
+  chips("#leadMeme", sn.leaders.meme, "No meme coins tracked right now.");
+  renderMyAlerts();
+}
+function renderBrief(){
+  const b = S.brief, body = $("#briefBody");
+  if (!b) return;
+  $("#briefTime").textContent = "written " + ago(b.generated_ms);
+  body.replaceChildren();
+  if (b.headline) body.append(h("p",null, h("strong",null,b.headline)));
+  if (b.summary) String(b.summary).split(/\n\n+/).forEach(p => body.append(h("p",null,p)));
+  const sec = (title, arr) => { if (!arr?.length) return; body.append(h("div",{class:"eyebrow",style:"margin-top:10px"},title), h("ul",null, ...arr.map(x => h("li",null, typeof x === "string" ? x : [h("strong",null,(x.title||"")+". "), x.detail||""])))); };
+  sec("Key events", b.events);
+  if (b.short_outlook) body.append(h("div",{class:"eyebrow",style:"margin-top:10px"},"Next few days"), h("p",null,b.short_outlook));
+  if (b.long_outlook) body.append(h("div",{class:"eyebrow",style:"margin-top:10px"},"Longer term"), h("p",null,b.long_outlook));
+  sec("Risks to watch", b.risks);
+  sec("Upcoming dates", b.calendar);
+  body.append(h("p",{class:"faint",style:"font-size:.78rem;margin-top:10px"},"Written by an AI model from the data on this page. It can make mistakes and is not advice."));
+}
+function renderHistory(){
+  const pts = (S.hist?.points||[]).filter(p => p.score != null);
+  $("#histWrap").hidden = pts.length < 3;
+  if (pts.length < 3) return;
+  $("#histChart").replaceChildren(lineChart(pts.map(p=>p.score), {hgt:110, fmt:v=>Math.round(v), yMin:0, yMax:100, t0:pts[0].t, step:(pts[pts.length-1].t-pts[0].t)/(pts.length-1)}));
+}
+function renderMyAlerts(){
+  const el = $("#myAlerts"); el.replaceChildren();
+  if (!S.snap) return;
+  const hits = S.wl.alerts.filter(a => { const c = coin(a.sym); return c && (a.dir==="above" ? c.price >= a.price : c.price <= a.price); });
+  if (hits.length) el.append(h("div",{class:"spread"},h("h3",null,"Your price alerts"), h("a",{href:"#watchlist",style:"font-size:.85rem"},"Manage")),
+    ...hits.map(a => h("div",{class:"alert-item hot"}, h("strong",null,`${a.sym} ${a.dir==="above"?"is above":"is below"} ${fp(a.price)}`), h("span",{class:"muted"},` · now ${fp(coin(a.sym).price)}`))));
+}
+
+// ------------------------------------------------------------ scanner
+function renderScanner(){
+  if (!S.snap) return;
+  const hz = S.horizon, q = $("#q").value.trim().toUpperCase(), fl = $("#fLabel").value, fr = $("#fRisk").value, fmeme = $("#fMeme").checked;
+  for (const b of document.querySelectorAll("#horizonSeg button")) b.setAttribute("aria-pressed", b.dataset.h === hz);
+  let rows = S.snap.coins.filter(c => (!q || c.sym.includes(q) || (c.name||"").toUpperCase().includes(q)) && (!fl || c[hz].label === fl) && (!fr || c.risk === fr) && (fmeme || !c.meme));
+  const key = {score:c=>c[hz].score, rank:c=>c.rank||999, price:c=>c.price, ch24h:c=>c.ch24h, ch7d:c=>c.ch7d, ch30d:c=>c.ch30d, risk:c=>["Low","Medium","High","Extreme"].indexOf(c.risk)}[S.sort.k];
+  rows.sort((a,b) => (key(a)-key(b))*S.sort.dir);
+  const cols = [["rank","#"],["coin","Coin"],["price","Price"],["ch24h","24h"],["ch7d","7d"],["ch30d","30d"],["spark","14 days"],["score","Trend"],["risk","Risk"],["lv", hz==="short"?"Support / Resistance":"200-day avg / 1y high"]];
+  const thr = h("tr");
+  for (const [k,l] of cols){ const sortable = !["coin","spark","lv"].includes(k);
+    thr.append(h("th",{class:["price","ch24h","ch7d","ch30d"].includes(k)?"num":"", "aria-sort": S.sort.k===k ? (S.sort.dir>0?"ascending":"descending") : null},
+      sortable ? h("button",{type:"button",onclick:()=>{ S.sort = {k, dir: S.sort.k===k ? -S.sort.dir : (k==="rank"||k==="risk"?1:-1)}; renderScanner(); }}, l + (S.sort.k===k ? (S.sort.dir>0?" ▲":" ▼") : "")) : l)); }
+  $("#sigTable thead").replaceChildren(thr);
+  const tb = $("#sigTable tbody"); tb.replaceChildren();
+  for (const c of rows){
+    const sg = c[hz], ser = S.charts?.series?.[c.sym]?.h4;
+    const barCol = sg.score>=60?"var(--up)":sg.score>=45?"var(--ink-3)":sg.score>=32?"var(--warn)":"var(--down)";
+    tb.append(h("tr",{onclick:()=>openCoin(c.sym),tabindex:"0",onkeydown:e=>{if(e.key==="Enter")openCoin(c.sym);}},
+      h("td",{class:"faint num"}, c.rank ?? "—"),
+      h("td",null, h("div",{class:"coincell"}, h("b",null,c.sym), c.name && c.name !== c.sym ? h("span",{class:"faint hidden-sm",style:"font-size:.8rem"},c.name) : null, c.meme ? h("span",{class:"pill meme"},"meme") : null)),
+      h("td",{class:"num"}, fp(c.price)),
+      h("td",{class:"num "+cls(c.ch24h)}, fpct(c.ch24h)), h("td",{class:"num "+cls(c.ch7d)}, fpct(c.ch7d)), h("td",{class:"num "+cls(c.ch30d)}, fpct(c.ch30d)),
+      h("td",null, spark(ser)),
+      h("td",null, h("div",{class:"row",style:"gap:8px;flex-wrap:nowrap"}, pill(sg.label), h("span",{class:"score"},sg.score), h("div",{class:"bar"}, h("i",{style:`width:${sg.score}%;background:${barCol}`})))),
+      h("td",null, riskPill(c.risk)),
+      h("td",{class:"num",style:"font-size:.82rem"}, hz==="short" ? `${fp(c.ind.support)} / ${fp(c.ind.resistance)}` : `${fp(c.ind.ema200_1d)} / ${fp(c.ind.hi365)}`)));
+  }
+  if (!rows.length) tb.append(h("tr",null,h("td",{colspan:cols.length,class:"faint"},"No coins match these filters.")));
+  $("#sigCount").textContent = `${rows.length} of ${S.snap.coins.length} coins`;
+}
+
+// ------------------------------------------------------------ coin sheet
+let lastFocus = null;
+function btCard(c){
+  const b = c.bt; if (!b) return null;
+  const head = h("div",{class:"spread"}, h("h3",null,"Backtest of the short-term model on "+c.sym), h("span",{class:"faint",style:"font-size:.8rem"},`last ${b.days} days · no news`));
+  if (!b.n) return h("div",{class:"card",style:"margin-top:12px"}, head, h("p",{class:"muted",style:"margin:8px 0 0"},`The model produced no Strong uptrend entries on ${c.sym} in this period. Buy and hold: ${fpct(b.hold,1)}.`));
+  const t = (l,v,cl) => h("div",null,l,h("b",{class:cl||""},v));
+  return h("div",{class:"card",style:"margin-top:12px"}, head,
+    h("div",{class:"levels",style:"margin-top:10px"}, t("Trades", b.n), t("Winners", b.win+"%"), t("Avg per trade", fpct(b.avg), cls(b.avg)),
+      t("Profit factor", b.pf ?? "∞", b.pf==null||b.pf>=1?"up":"down"), t("Model account", fpct(b.acct,1), cls(b.acct)), t("Buy & hold", fpct(b.hold,1), cls(b.hold))),
+    h("p",{class:"faint",style:"margin:10px 0 0;font-size:.82rem"}, "Past results do not predict future results. See the Backtests tab for the method."));
+}
+function openCoin(sym){
+  const c = coin(sym); if (!c) return;
+  lastFocus = document.activeElement;
+  const sh = $("#sheet"); sh.replaceChildren();
+  const series = S.charts?.series?.[sym], st = c.short, lt = c.long, note = S.brief?.coin_notes?.[sym];
+  const chartBox = h("div",{class:"chartbox"});
+  const drawChart = () => {
+    const mode = S.chartMode, vals = series?.[mode] || [];
+    const ov = mode === "h4"
+      ? [{v:st.levels.vstop,label:"volatility stop",color:"var(--down)"},{v:st.levels.r15,label:"+1.5R",color:"var(--up)"},{v:st.levels.r3,label:"+3R",color:"var(--up)"}]
+      : [{v:c.ind.ema200_1d,label:"200-day avg",color:"var(--accent)"},{v:lt.levels.trend_break,label:"trend break",color:"var(--down)"}];
+    chartBox.replaceChildren(lineChart(vals, {overlays:ov, t0: mode==="h4"?series?.t4:series?.td, step: mode==="h4"?4*3600e3:86400e3}));
+    for (const b of sh.querySelectorAll("[data-cm]")) b.setAttribute("aria-pressed", b.dataset.cm === mode);
+  };
+  const reasons = arr => h("ul",{class:"reasons"}, ...arr.map(r => h("li",null, h("span",{class:"m "+(r.s>0?"up":r.s<0?"down":"faint")}, r.s>0?"+":r.s<0?"−":"·"), h("span",null,r.t))));
+  const newsFor = (S.news?.items||[]).filter(n => n.coins?.includes(sym)).slice(0,6);
+  const L = st.levels, LL = lt.levels;
+  sh.append(...[
+    h("div",{class:"head"},
+      h("div",null, h("div",{class:"eyebrow"}, `#${c.rank ?? "—"} · ${c.name||c.sym}`), h("h2",{id:"sheetTitle",style:"font-size:1.8rem"}, c.sym),
+        h("div",{class:"row",style:"margin-top:4px"}, h("span",{class:"price"},fp(c.price)), h("span",{class:"num "+cls(c.ch24h)},fpct(c.ch24h)+" 24h"), h("span",{class:"num "+cls(c.ch7d)},fpct(c.ch7d)+" 7d"), c.meme ? h("span",{class:"pill meme"},"meme coin") : null, riskPill(c.risk))),
+      h("button",{class:"btn",type:"button",onclick:closeSheet,"aria-label":"Close"},"Close")),
+    h("div",{class:"card"},
+      h("div",{class:"spread"}, h("div",{class:"seg",role:"group","aria-label":"Chart range"},
+        h("button",{type:"button","data-cm":"h4",onclick:()=>{S.chartMode="h4";drawChart();}},"14 days · 4h"),
+        h("button",{type:"button","data-cm":"d1",onclick:()=>{S.chartMode="d1";drawChart();}},"4 months · daily")),
+        h("span",{class:"faint",style:"font-size:.8rem"},"Dashed lines: technical reference levels")),
+      h("div",{style:"margin-top:8px"}, chartBox)),
+    note ? h("div",{class:"card",style:"margin-top:12px"}, h("div",{class:"eyebrow"},"AI note"), h("p",{style:"margin:6px 0 0"},note)) : null,
+    h("div",{class:"grid g2",style:"margin-top:12px"},
+      h("div",{class:"card"},
+        h("div",{class:"spread"}, h("h3",null,"Short-term trend"), h("span",{class:"row",style:"gap:6px"}, pill(st.label), h("span",{class:"score"},st.score+"/100"))),
+        h("div",{class:"levels",style:"margin-top:10px"},
+          h("div",null,"Pullback zone", h("b",null, `${fp(L.pullback[0])} – ${fp(L.pullback[1])}`)),
+          h("div",null,"Volatility stop", h("b",{class:"down"}, `${fp(L.vstop)} (−${L.vstop_pct}%)`)),
+          h("div",null,"Resistance", h("b",null, fp(L.resistance))),
+          h("div",null,"+1.5R level", h("b",{class:"up"}, `${fp(L.r15)} (+${L.r15_pct}%)`)),
+          h("div",null,"+3R level", h("b",{class:"up"}, `${fp(L.r3)} (+${L.r3_pct}%)`)),
+          h("div",null,"4h ATR", h("b",null, c.ind.atr4h_pct+"%"))),
+        h("p",{class:"faint",style:"font-size:.8rem;margin:8px 0 0"},"Reference levels used by the scoring model and backtest (2×ATR below price, then 1.5 and 3 times that distance above). They are not instructions."),
+        h("div",{class:"eyebrow",style:"margin-top:12px"},"What drives the score"), reasons(st.reasons)),
+      h("div",{class:"card"},
+        h("div",{class:"spread"}, h("h3",null,"Long-term trend"), h("span",{class:"row",style:"gap:6px"}, pill(lt.label), h("span",{class:"score"},lt.score+"/100"))),
+        h("div",{class:"levels",style:"margin-top:10px"},
+          h("div",null,"50/200-day band", h("b",null, `${fp(LL.band[0])} – ${fp(LL.band[1])}`)),
+          h("div",null,"Trend break", h("b",{class:"down"}, fp(LL.trend_break))),
+          h("div",null,"1-year high", h("b",null, fp(LL.hi1y)))),
+        h("p",{class:"faint",style:"font-size:.8rem;margin:8px 0 0"},"Trend break = 8% below the 200-day average, where the long-term uptrend would be considered broken."),
+        h("div",{class:"eyebrow",style:"margin-top:12px"},"What drives the score"), reasons(lt.reasons))),
+    btCard(c),
+    h("h3",{style:"margin:16px 0 8px"},"Indicators"),
+    h("div",{class:"inds"},
+      ...[["RSI 4h",c.ind.rsi4h],["RSI daily",c.ind.rsi1d],["MACD 4h",c.ind.macd_rising?"rising":"falling"],["Volume vs avg","x"+c.ind.vol_ratio],
+          ["Support",fp(c.ind.support)],["Resistance",fp(c.ind.resistance)],["200-day avg",fp(c.ind.ema200_1d)],["From 1y high",fpct(c.ind.dd365,1)],
+          ["vs BTC, 90d",fpct(c.ind.rs_btc90,1)],["Volatility (yr)",c.ind.vol_ann+"%"],["Market cap",fb(c.mcap)],["24h volume",fb(c.vol24)]]
+        .map(([k,v]) => h("div",null,k,h("b",null,v)))),
+    h("h3",{style:"margin:16px 0 8px"},"Related news"),
+    newsFor.length ? h("div",{class:"card"}, newsList(newsFor)) : h("p",{class:"faint"},"No headlines mention this coin in the latest update."),
+    h("div",{class:"row",style:"margin-top:16px"},
+      h("button",{class:"btn",type:"button",onclick:()=>{ addWatch(sym); closeSheet(); location.hash="#watchlist"; }}, S.wl.items.some(i=>i.sym===sym) ? "In your watchlist" : "Add to watchlist"))
+  ].filter(Boolean));
+  drawChart();
+  $("#sheetBg").hidden = false; sh.hidden = false; sh.scrollTop = 0; sh.querySelector("button")?.focus();
+}
+function closeSheet(){ $("#sheet").hidden = true; $("#sheetBg").hidden = true; lastFocus?.focus?.(); }
+$("#sheetBg").addEventListener("click", closeSheet);
+addEventListener("keydown", e => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+
+// ------------------------------------------------------------ news
+function newsList(items){
+  return h("div",{class:"news"}, ...items.map(n => {
+    const url = safeUrl(n.link);
+    return h("article",{class: n.sent>0.15?"pos":n.sent<-0.15?"neg":""}, h("span",{class:"stripe"}),
+      h("div",{style:"min-width:0"},
+        url ? h("a",{class:"t",href:url,target:"_blank",rel:"noopener noreferrer nofollow"}, n.title) : h("span",{class:"t"},n.title),
+        h("div",{class:"meta"}, h("span",null,n.source), h("span",null,ago(n.ts*1000)), h("span",{class:"pill"},n.cat),
+          n.impact==="high" ? h("span",{class:"pill r"},"high impact") : null,
+          h("span",{class:"pill "+(n.sent>0.15?"b":n.sent<-0.15?"s":"h")}, n.sent>0.15?"positive":n.sent<-0.15?"negative":"neutral"),
+          ...(n.coins||[]).slice(0,5).map(sy => h("button",{class:"chip",type:"button",style:"padding:1px 7px",onclick:()=>openCoin(sy)},sy)))));
+  }));
+}
+function renderNews(){
+  const items = S.news?.items || [];
+  const cats = ["All", ...new Set(items.map(n => n.cat))];
+  $("#newsFilters").replaceChildren(...cats.map(ct => h("button",{class:"chip",type:"button","aria-pressed":S.newsCat===ct,onclick:()=>{S.newsCat=ct;renderNews();}},ct)),
+    h("button",{class:"chip",type:"button","aria-pressed":S.newsCat==="__high",onclick:()=>{S.newsCat="__high";renderNews();}},"High impact only"));
+  const shown = items.filter(n => S.newsCat==="All" || (S.newsCat==="__high" ? n.impact==="high" : n.cat===S.newsCat));
+  $("#newsList").replaceChildren(shown.length ? newsList(shown) : h("div",{class:"empty"}, items.length ? "No headlines in this category." : "Loading headlines…"));
+  const mood = S.snap?.market?.news_mood;
+  $("#newsCount").textContent = `${shown.length} headlines` + (mood!=null ? ` · overall mood ${mood>0.1?"positive":mood<-0.1?"negative":"mixed"}` : "");
+}
+
+// ------------------------------------------------------------ watchlist (browser only)
+function saveWl(){ store.set("tl_watch", S.wl); renderWatchlist(); renderMyAlerts(); }
+function addWatch(sym, qty, cost){ if (!S.wl.items.some(i => i.sym === sym)) S.wl.items.push({sym, qty: qty||null, cost: cost||null}); saveWl(); }
+function fillCoinSelects(){
+  const opts = (S.snap?.coins||[]).map(c => h("option",{value:c.sym}, `${c.sym}${c.name && c.name!==c.sym ? " · "+c.name : ""}`));
+  for (const id of ["#wSym","#aSym"]){ const el = $(id), v = el.value; el.replaceChildren(...opts.map(o => o.cloneNode(true))); if (v) el.value = v; }
+}
+function renderWatchlist(){
+  const tb = $("#wlTable tbody"); tb.replaceChildren();
+  let val = 0, cost = 0;
+  S.wl.items.forEach((it, i) => {
+    const c = coin(it.sym), v = c && it.qty ? it.qty*c.price : null, cs = it.qty && it.cost ? it.qty*it.cost : null, g = v!=null && cs!=null ? v-cs : null;
+    if (v) val += v; if (cs) cost += cs;
+    tb.append(h("tr",{onclick:e=>{ if(!e.target.closest("button")) openCoin(it.sym); }},
+      h("td",null, h("b",{style:"font-family:var(--f-display)"},it.sym)), h("td",{class:"num"}, c?fp(c.price):"—"),
+      h("td",{class:"num "+cls(c?.ch24h)}, c?fpct(c.ch24h):"—"), h("td",{class:"num "+cls(c?.ch7d)}, c?fpct(c.ch7d):"—"),
+      h("td",null, c?pill(c.short.label):"—"), h("td",null, c?pill(c.long.label):"—"),
+      h("td",{class:"num"}, v!=null?fm(v):"—"), h("td",{class:"num "+cls(g)}, g!=null?`${fm(g)} (${fpct(g/cs*100,1)})`:"—"),
+      h("td",null, h("button",{class:"btn small",type:"button",onclick:()=>{ S.wl.items.splice(i,1); saveWl(); }},"Remove"))));
+  });
+  if (!S.wl.items.length) tb.append(h("tr",null,h("td",{colspan:9,class:"faint",style:"white-space:normal"},"Add coins you follow to see their trend status in one place. Add the amount and cost if you want to track value.")));
+  $("#wlKpis").replaceChildren(
+    h("div",{class:"kpi"},h("span",{class:"eyebrow"},"Coins watched"),h("span",{class:"v"},S.wl.items.length),h("span",{class:"s muted"},"saved in this browser")),
+    h("div",{class:"kpi"},h("span",{class:"eyebrow"},"Tracked value"),h("span",{class:"v"},fm(val)),h("span",{class:"s muted"},"coins with an amount")),
+    h("div",{class:"kpi"},h("span",{class:"eyebrow"},"Gain / loss"),h("span",{class:"v "+cls(val-cost)},cost?fm(val-cost):"—"),h("span",{class:"s "+cls(val-cost)},cost?fpct((val-cost)/cost*100,1):"add costs to see this")));
+  const al = $("#alertList"); al.replaceChildren();
+  S.wl.alerts.forEach((a, i) => { const c = coin(a.sym), hit = c && (a.dir==="above" ? c.price>=a.price : c.price<=a.price);
+    al.append(h("div",{class:"alert-item"+(hit?" hot":"")}, h("span",{style:"flex:1"}, `${a.sym} ${a.dir==="above"?"rises above":"falls below"} ${fp(a.price)}`, h("span",{class:"faint"}, c ? ` · now ${fp(c.price)}` : ""), hit ? h("strong",null," · reached") : ""),
+      h("button",{class:"btn small",type:"button",onclick:()=>{ S.wl.alerts.splice(i,1); saveWl(); }},"Remove"))); });
+  if (!S.wl.alerts.length) al.append(h("span",{class:"faint",style:"font-size:.85rem"},"No alerts yet."));
+}
+$("#addWatch").addEventListener("submit", e => { e.preventDefault(); addWatch($("#wSym").value, +$("#wQty").value || null, +$("#wCost").value || null); e.target.reset(); });
+$("#addAlert").addEventListener("submit", e => { e.preventDefault(); const p = +$("#aPrice").value; if (!(p>0)) return; S.wl.alerts.push({sym:$("#aSym").value, dir:$("#aDir").value, price:p}); $("#aPrice").value=""; saveWl(); });
+
+// ------------------------------------------------------------ backtest
+function renderBacktest(){
+  const bt = S.snap?.backtest, k = $("#btKpis");
+  if (!bt || !bt.trades){ k.replaceChildren(h("div",{class:"empty",style:"grid-column:1/-1"},"Backtest results appear after the next update.")); return; }
+  $("#btNote").textContent = `${bt.coins} coins · last ${bt.days} days`;
+  const t = (l,v,sub,cl) => h("div",{class:"kpi"},h("span",{class:"eyebrow"},l),h("span",{class:"v "+(cl||"")},v),h("span",{class:"s muted"},sub));
+  k.replaceChildren(t("Simulated trades", bt.trades, "all coins"), t("Winners", bt.win+"%", "any profit after fees"),
+    t("Avg per trade", fpct(bt.avg), "after 0.1% fees each way", cls(bt.avg)), t("Avg R", bt.avg_r, "result in units of risk", cls(bt.avg_r)),
+    t("Beat buy & hold", `${bt.beat_hold} of ${bt.coins}`, "coins, at equal size"));
+  $("#btVerdict").textContent = (bt.avg > 0.5 ? "Over this period the model had a small positive average result per trade" : bt.avg > 0 ? "Over this period the model roughly broke even per trade" : "Over this period the model lost money on average")
+    + `, and it trailed simply holding on most coins. Results differ a lot between coins.`;
+  const rows = S.snap.coins.filter(c => c.bt?.n).sort((a,b) => b.bt.acct - a.bt.acct);
+  $("#btTable tbody").replaceChildren(...rows.map(c => h("tr",{onclick:()=>openCoin(c.sym)}, h("td",null,h("b",null,c.sym)), h("td",{class:"num"},c.bt.n), h("td",{class:"num"},c.bt.win+"%"),
+    h("td",{class:"num "+cls(c.bt.avg)},fpct(c.bt.avg)), h("td",{class:"num "+(c.bt.pf==null||c.bt.pf>=1?"up":"down")},c.bt.pf ?? "∞"), h("td",{class:"num "+cls(c.bt.acct)},fpct(c.bt.acct,1)), h("td",{class:"num "+cls(c.bt.hold)},fpct(c.bt.hold,1)))));
+}
+
+// ------------------------------------------------------------ report card
+function renderLedger(){
+  const L = S.ledger, k = $("#ledKpis");
+  if (!L){ k.replaceChildren(h("div",{class:"empty",style:"grid-column:1/-1"},"The report card starts with the next update.")); return; }
+  const st = L.stats || {}, all = st.all || {n:0}, up = st.up || {n:0}, dn = st.down || {n:0};
+  $("#ledNote").textContent = `logging since ${new Date(L.started_ms).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})} · ${st.total||0} calls`;
+  const t = (l,v,sub,cl) => h("div",{class:"kpi"},h("span",{class:"eyebrow"},l),h("span",{class:"v "+(cl||"")},v),h("span",{class:"s muted"},sub));
+  k.replaceChildren(
+    t("Calls graded", all.n, `${st.open||0} still open`),
+    t("Right after 7 days", all.n ? all.pct+"%" : "—", all.n ? `${all.right} of ${all.n} calls` : "first grades after 7 days", all.n ? (all.pct>=50?"up":"down") : ""),
+    t("Uptrend calls", up.n ? `${up.pct}% right` : "—", up.n ? `avg 7d move ${fpct(up.avg7)} · vs BTC ${fpct(up.vs_btc)}` : "none graded yet", up.n ? cls(up.vs_btc) : ""),
+    t("Downtrend calls", dn.n ? `${dn.pct}% right` : "—", dn.n ? `avg 7d move ${fpct(dn.avg7)}` : "none graded yet", dn.n ? (dn.pct>=50?"up":"down") : ""));
+  const date = ms => new Date(ms).toLocaleDateString(undefined,{day:"numeric",month:"short"}) + " " + new Date(ms).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+  const lab = d => h("span",{class:"pill "+(d==="up"?"sb":"s")}, d==="up"?"Strong uptrend":"Downtrend");
+  const calls = (L.calls||[]).slice().sort((a,b) => b.t - a.t);
+  const open = calls.filter(c => !c.graded), done = calls.filter(c => c.graded);
+  $("#ledOpen tbody").replaceChildren(...(open.length ? open.map(c => { const now = coin(c.sym)?.price, mv = now ? (now/c.price-1)*100 : null;
+    return h("tr",{onclick:()=>openCoin(c.sym)}, h("td",null,date(c.t)), h("td",null,h("b",null,c.sym)), h("td",null,lab(c.dir)), h("td",{class:"num"},fp(c.price)), h("td",{class:"num"},now?fp(now):"—"),
+      h("td",{class:"num "+cls(mv)}, mv==null?"—":fpct(mv)), h("td",{class:"num faint"}, new Date(c.t+7*864e5).toLocaleDateString(undefined,{day:"numeric",month:"short"}))); })
+    : [h("tr",null,h("td",{colspan:7,class:"faint"},"No open calls."))]));
+  const cell = v => h("td",{class:"num "+cls(v)}, v==null?"n/a":fpct(v,1));
+  $("#ledDone tbody").replaceChildren(...(done.length ? done.map(c => h("tr",{onclick:()=>openCoin(c.sym)},
+      h("td",null,date(c.t)), h("td",null,h("b",null,c.sym)), h("td",null,lab(c.dir)), h("td",{class:"num"},fp(c.price)), cell(c.d1), cell(c.d3), cell(c.d7),
+      h("td",{class:"num "+cls(c.d7!=null&&c.d7_btc!=null?c.d7-c.d7_btc:null)}, c.d7!=null&&c.d7_btc!=null ? fpct(c.d7-c.d7_btc,1) : "—"),
+      h("td",null, c.right==null ? h("span",{class:"faint"},"no data") : c.right ? h("span",{class:"pill b"},"✓ right") : h("span",{class:"pill s"},"✗ wrong"))))
+    : [h("tr",null,h("td",{colspan:9,class:"faint",style:"white-space:normal"},"No graded calls yet. Each call is graded 7 days after it is logged."))]));
+  const g = all.n ? `So far ${all.right} of ${all.n} graded calls were right after 7 days (${all.pct}%).` : `${st.total||0} calls logged so far. The first grades arrive 7 days after the first call.`;
+  $("#receiptLine").textContent = g + " Wrong calls stay on the record.";
+}
+
+// ------------------------------------------------------------ calculator
+function renderCalc(){
+  const cap=+$("#cCap").value, r=+$("#cRisk").value/100, en=+$("#cEntry").value, stp=+$("#cStop").value, tp=+$("#cTp").value, out = $("#cOut");
+  if (!(cap>0 && en>0 && stp>0 && stp<en)){ out.replaceChildren(h("span",{class:"faint"},"Enter an entry price above the stop price.")); return; }
+  const sp = (en-stp)/en, size = Math.min(cap*r/sp, cap), qty = size/en, fees = size*0.001*2, rr = tp>en ? (tp-en)/(en-stp) : null;
+  const t = (l,v,s,c) => h("div",{class:"kpi"},h("span",{class:"eyebrow"},l),h("span",{class:"v "+(c||"")},v),h("span",{class:"s muted"},s));
+  out.replaceChildren(t("Position size","$"+size.toFixed(2), `${(size/cap*100).toFixed(0)}% of account`), t("Units", Number(qty.toPrecision(5)).toString(), `at $${en}`),
+    t("Loss if stop is hit","$"+(size*sp+fees).toFixed(2), `stop ${(sp*100).toFixed(1)}% away, plus fees`, "down"),
+    t("Reward : risk", rr ? rr.toFixed(2)+" : 1" : "—", rr ? "target distance ÷ stop distance" : "set a target above entry"),
+    t("Gain if target is hit", rr ? "$"+(qty*(tp-en)-fees).toFixed(2) : "—", "after 0.1% fees each way", "up"));
+}
+for (const id of ["#cCap","#cRisk","#cEntry","#cStop","#cTp"]) $(id).addEventListener("input", renderCalc);
+
+// ------------------------------------------------------------ method
+function renderMethod(){
+  const m = S.snap?.meta, el = $("#srcList"); el.replaceChildren();
+  if (!m){ el.append(h("li",{class:"faint"},"Loading…")); return; }
+  (m.sources_ok||[]).forEach(x => el.append(h("li",null, h("span",{class:"up"},"✓ "), x)));
+  (m.sources_failed||[]).forEach(x => el.append(h("li",null, h("span",{class:"down"},"✕ "), x)));
+  el.append(h("li",{class:"faint"}, `Engine v${m.version} · ${m.coins} coins`));
+}
+
+// ------------------------------------------------------------ render + data loading
+function renderAll(){
+  renderHeader();
+  if (S.snap){ fillCoinSelects(); renderOverview(); renderScanner(); renderBacktest(); }
+  renderBrief(); renderNews(); renderWatchlist(); renderMethod(); renderHistory(); renderLedger();
+}
+$("#curSel").addEventListener("change", e => { S.cur = e.target.value; store.set("tl_cur", S.cur); renderAll(); });
+$("#horizonSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S.horizon = b.dataset.h; renderScanner(); });
+for (const id of ["#q","#fLabel","#fRisk","#fMeme"]) $(id).addEventListener("input", renderScanner);
+
+async function getJSON(name, v){ const r = await fetch(`data/${name}.json?v=${v}`, {cache:"no-store"}); if (!r.ok) throw new Error(name+" "+r.status); return r.json(); }
+let loadedAt = 0;
+async function load(){
+  const v = Math.floor(Date.now()/300000);
+  try {
+    const snap = await getJSON("snapshot", v);
+    if (snap.meta.generated_ms === loadedAt) return;
+    const [charts, news, hist, brief, ledger] = await Promise.all(["charts","news","history","brief","ledger"].map(n => getJSON(n, v).catch(() => null)));
+    Object.assign(S, {snap, charts, news, hist, brief, ledger}); loadedAt = snap.meta.generated_ms; renderAll();
+  } catch(e){
+    if (!S.snap) $("#banners").replaceChildren(h("div",{class:"banner err"}, h("span",null,"Market data couldn't be loaded. Check your connection and refresh the page.")));
+  }
+}
+
+$("#yr").textContent = new Date().getFullYear();
+if (SITE.contactEmail) $("#contactLine").append("Contact: ", h("span",{class:"mono"},SITE.contactEmail));
+if (!store.get("tl_ack", false)) $("#notice").hidden = false;
+$("#noticeOk").addEventListener("click", () => { store.set("tl_ack", true); $("#notice").hidden = true; });
+route(); renderAll(); renderCalc(); load();
+setInterval(load, 300000); setInterval(renderHeader, 60000);
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Engine outputs
+build/
+state/
+out/
+__pycache__/
+*.pyc
+site/data/*.json
